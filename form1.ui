@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+    <class>dialog</class>
+    <widget class="QWidget" name="dialog">
+        <property name="geometry">
+            <rect>
+                <x>0</x>
+                <y>0</y>
+                <width>886</width>
+                <height>523</height>
+            </rect>
+        </property>
+        <property name="minimumSize">
+            <size>
+                <width>0</width>
+                <height>0</height>
+            </size>
+        </property>
+        <property name="maximumSize">
+            <size>
+                <width>1366</width>
+                <height>690</height>
+            </size>
+        </property>
+        <property name="windowTitle">
+            <string>Dialog</string>
+        </property>
+        <widget class="QGroupBox" name="groupBox">
+            <property name="geometry">
+                <rect>
+                    <x>0</x>
+                    <y>10</y>
+                    <width>311</width>
+                    <height>451</height>
+                </rect>
+            </property>
+            <property name="title">
+                <string>Настройка параметров</string>
+            </property>
+            <widget class="QLabel" name="label">
+                <property name="geometry">
+                    <rect>
+                        <x>10</x>
+                        <y>30</y>
+                        <width>131</width>
+                        <height>21</height>
+                    </rect>
+                </property>
+                <property name="text">
+                    <string>Показать статистику за</string>
+                </property>
+            </widget>
+            <widget class="QComboBox" name="comboBox">
+                <property name="geometry">
+                    <rect>
+                        <x>10</x>
+                        <y>60</y>
+                        <width>151</width>
+                        <height>22</height>
+                    </rect>
+                </property>
+            </widget>
+            <widget class="QLabel" name="label_2">
+                <property name="geometry">
+                    <rect>
+                        <x>10</x>
+                        <y>90</y>
+                        <width>171</width>
+                        <height>20</height>
+                    </rect>
+                </property>
+                <property name="text">
+                    <string>Введите название субъекта РФ</string>
+                </property>
+            </widget>
+            <widget class="QLineEdit" name="plainTextEdit">
+                <property name="geometry">
+                    <rect>
+                        <x>10</x>
+                        <y>120</y>
+                        <width>251</width>
+                        <height>21</height>
+                    </rect>
+                </property>
+            </widget>
+            <widget class="QLabel" name="label_14">
+                <property name="geometry">
+                    <rect>
+                        <x>10</x>
+                        <y>270</y>
+                        <width>201</width>
+                        <height>20</height>
+                    </rect>
+                </property>
+                <property name="text">
+                    <string>Выберите параметр для отображения</string>
+                </property>
+            </widget>
+            <widget class="QComboBox" name="comboBox_4">
+                <property name="geometry">
+                    <rect>
+                        <x>10</x>
+                        <y>300</y>
+                        <width>251</width>
+                        <height>22</height>
+                    </rect>
+                </property>
+                <item>
+                    <property name="text">
+                        <string>По количеству закупок</string>
+                    </property>
+                </item>
+                <item>
+                    <property name="text">
+                        <string>По стоимости</string>
+                    </property>
+                </item>
+            </widget>
+            <widget class="QLabel" name="label_15">
+                <property name="geometry">
+                    <rect>
+                        <x>10</x>
+                        <y>150</y>
+                        <width>151</width>
+                        <height>20</height>
+                    </rect>
+                </property>
+                <property name="text">
+                    <string>Выберите класс ПО</string>
+                </property>
+            </widget>
+            <widget class="QComboBox" name="comboBox_5">
+                <property name="geometry">
+                    <rect>
+                        <x>10</x>
+                        <y>180</y>
+                        <width>291</width>
+                        <height>22</height>
+                    </rect>
+                </property>
+            </widget>
+        </widget>
+        <widget class="QGroupBox" name="groupBox_2">
+            <property name="geometry">
+                <rect>
+                    <x>320</x>
+                    <y>10</y>
+                    <width>561</width>
+                    <height>451</height>
+                </rect>
+            </property>
+            <property name="title">
+                <string>Диаграмма</string>
+            </property>
+            <widget class="QWidget" name="content_plot" native="true">
+                <property name="geometry">
+                    <rect>
+                        <x>20</x>
+                        <y>10</y>
+                        <width>541</width>
+                        <height>411</height>
+                    </rect>
+                </property>
+            </widget>
+        </widget>
+        <widget class="QLabel" name="label_3">
+            <property name="geometry">
+                <rect>
+                    <x>20</x>
+                    <y>470</y>
+                    <width>431</width>
+                    <height>20</height>
+                </rect>
+            </property>
+            <property name="text">
+                <string>Процент отечественных ПО от общего количество ПО, участвовавших в закупках</string>
+            </property>
+        </widget>
+        <widget class="QLineEdit" name="lineEdit">
+            <property name="geometry">
+                <rect>
+                    <x>460</x>
+                    <y>470</y>
+                    <width>71</width>
+                    <height>20</height>
+                </rect>
+            </property>
+        </widget>
+        <widget class="QPushButton" name="button">
+            <property name="geometry">
+                <rect>
+                    <x>620</x>
+                    <y>460</y>
+                    <width>100</width>
+                    <height>30</height>
+                </rect>
+            </property>
+            <property name="text">
+                <string>Расчитать</string>
+            </property>
+        </widget>
+    </widget>
+    <resources/>
+    <connections/>
+</ui>
