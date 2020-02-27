@@ -4,18 +4,20 @@ import zipfile
 import os
 
 from database import Region, orm
-
+from xml_parcer import save_file_to_db
 
 class PurchaseLoader:
     """
     Класс для загрузки xml с фтп
     Данные сохраняются в xml файлах для последующего анализа с помощью xml_parcer.py
     """
+
     def __init__(self):
         self.ftp = ftplib.FTP('ftp.zakupki.gov.ru')
         self.ftp.login('free', 'free')
 
-    def get_region(self, region_name:str):
+
+    def get_region(self, region_name: str):
         """
         Получение данных о закупках в регионе
         :param region_name: название региона
@@ -30,16 +32,23 @@ class PurchaseLoader:
 
         for chunks in line_chunks:
             file = self.get_file(chunks)
+            xml_files = []
+            if file['name'].endswith('.xml'):
+
+                xml_files.append(file)
             if not file['name'].endswith(".zip"):
                 continue
 
             zip_file = zipfile.ZipFile(io.BytesIO(file['binary']))
 
-            xml_files = []
-
             for xml_filename in zip_file.namelist():
                 if not xml_filename.endswith(".xml"):
                     continue
+                xml_binary = zip_file.read(xml_filename)
+                xml_files.append({
+                    'name': xml_filename,
+                    'binary': xml_binary
+                })
 
             yield {
                 'region_name': region_name,
@@ -91,7 +100,7 @@ class PurchaseLoader:
         return self.is_file(line_chunks) and self.is_zip(line_chunks)
 
 
-def get_region(loader:PurchaseLoader, region_name:str):
+def get_region(loader: PurchaseLoader, region_name: str):
     """
     Загрузка региона
     из старого кода
@@ -104,11 +113,13 @@ def get_region(loader:PurchaseLoader, region_name:str):
 
     for file in loader.get_region(region_name):
         if len(file['xml_files']) > 0:
-            if not os.path.isdir(f"downloads/{region_name}/{file['filename']}"):
-                os.mkdir(f"downloads/{region_name}/{file['filename']}")
+            # if not os.path.isdir(f"downloads/{region_name}/{file['filename']}"):
+            #     os.mkdir(f"downloads/{region_name}/{file['filename']}")
             for xml_file in file['xml_files']:
-                f = open(f"downloads/{region_name}/{file['filename']}/{xml_file['name']}", 'wb')
+                f = open(f"tmp_file", 'wb')
                 f.write(xml_file['binary'])
+                f.close()
+                save_file_to_db(f"tmp_file", region_name)
 
         print(f"{region_name} - {int((file['current'] / file['length']) * 100)}% loaded")
 

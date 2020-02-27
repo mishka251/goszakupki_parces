@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 
 
 def get_okpd2_from_xml(tree) -> str:
-    okpd2 = tree.getElementsByTagName('OKPD2')[0]
+    okpd2 = (tree.getElementsByTagName('OKPD') or tree.getElementsByTagName('OKPD2'))[0]
     code = okpd2.getElementsByTagName('code')[0]
     return code.childNodes[0].data
 
@@ -136,34 +136,34 @@ def save_file_to_db(filepath: str, region: str):
                         object_name=code['object'])
 
 
-def get_region_codes(region: str):
-    """
-    Обработка всех загруженных файлов для региона
-    :param region:
-    :return:
-    """
-    downloads_dir: str = 'downloads'
-    region_dir: str = os.path.join(downloads_dir, region)
-    if not os.path.exists(region_dir):
-        print(f"Не найдена папка загрузок {region_dir} для региона {region}")
-        return
+# def get_region_codes(region: str):
+#     """
+#     Обработка всех загруженных файлов для региона
+#     :param region:
+#     :return:
+#     """
+#     downloads_dir: str = 'downloads'
+#     region_dir: str = os.path.join(downloads_dir, region)
+#     if not os.path.exists(region_dir):
+#         print(f"Не найдена папка загрузок {region_dir} для региона {region}")
+#         return
+#
+#     total: int = len(os.listdir(region_dir))
+#
+#     for i, folder in enumerate(os.listdir(region_dir)):
+#
+#         folder_path: str = os.path.join(region_dir, folder)
+#
+#         if not os.path.isdir(folder_path):
+#             print(f"Warning, is not dir {folder_path}")
+#             continue
+#
+#         for file in os.listdir(folder_path):
+#             save_file_to_db(os.path.join(folder_path, file), region)
+#
+#         print(f"{region_name} - {int(100 * i / total)}% added to db")
 
-    total: int = len(os.listdir(region_dir))
 
-    for i, folder in enumerate(os.listdir(region_dir)):
-
-        folder_path: str = os.path.join(region_dir, folder)
-
-        if not os.path.isdir(folder_path):
-            print(f"Warning, is not dir {folder_path}")
-            continue
-
-        for file in os.listdir(folder_path):
-            save_file_to_db(os.path.join(folder_path, file), region)
-
-        print(f"{region_name} - {int(100 * i / total)}% added to db")
-
-
-with orm.db_session:
-    for region_name in orm.select(r.name for r in Region):
-        get_region_codes(region_name)
+# with orm.db_session:
+#     for region_name in orm.select(r.name for r in Region):
+#         get_region_codes = []
