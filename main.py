@@ -1,4 +1,4 @@
-from typing import List, Collection, Dict
+from typing import List, Collection, Dict, Tuple
 import sys
 import datetime
 from enum import Enum
@@ -45,6 +45,21 @@ class CalculateBy(Enum):
     sum = 2
 
 
+class PurchaseView(object):
+    is_russian: bool
+    price: float
+    # code: str
+    region: str
+    date: datetime.date
+
+    def __init__(self, rus: bool, price: float, region: str, date: datetime.date):
+        self.date = date
+        self.region = region
+        self.price = price
+        self.is_russian = rus
+        # self.code = code
+
+
 def log_uncaught_exceptions(ex_cls, ex, tb):
     """
     Эта для обработки ошибок, скопировано с инета
@@ -65,7 +80,7 @@ def log_uncaught_exceptions(ex_cls, ex, tb):
 sys.excepthook = log_uncaught_exceptions
 
 
-def get_rus_po_perc(purchases: Collection[Purchase]) -> float:
+def get_rus_po_perc(purchases: List[PurchaseView]) -> float:
     """
     % российского ПО в закупках
     :param purchases: коллекция(список или ещё что) закупок
@@ -73,14 +88,14 @@ def get_rus_po_perc(purchases: Collection[Purchase]) -> float:
     """
     rus_po_count = 0
     for purchase in purchases:
-        if purchase.pos.is_russian:
+        if purchase.is_russian:
             rus_po_count += 1
 
     rus_po_percent = 100 * rus_po_count / len(purchases)
     return rus_po_percent
 
 
-def get_purchases(region_name: str, po_class_name: str, period: str) -> List[Purchase]:
+def get_purchases(region_name: str, po_class_name: str, period: str) -> List[PurchaseView]:
     """
     Получение закупок по параметрам
     :param region_name: интересующий регион(или все)
@@ -95,16 +110,21 @@ def get_purchases(region_name: str, po_class_name: str, period: str) -> List[Pur
     with orm.db_session:
         classifier = Classifier.get(name=po_class_name)
         po_codes = classifier.classes
-        if region_name == 'все':
-            purchases = orm.select(
-                purchase for purchase in Purchase if purchase.pos.po_class in po_codes and purchase.date >= date_start)
-        else:
-            purchases = orm.select(purchase for purchase in Purchase if
-                                   purchase.pos.po_class in po_codes and purchase.region.readable_name == region_name and purchase.date >= date_start)
-        return list(purchases)
+        purchases = orm.select(
+            (purchase.region.readable_name, purchase.price, purchase.date, purchase.pos.is_russian)
+            for purchase in Purchase
+            if purchase.pos.po_class in po_codes
+            and purchase.date >= date_start)
+        if region_name != ALL_REGIONS:
+            purchases = purchases.where(lambda purchase: purchase.region.readable_name == region_name)
+
+        def create_view(purchase: Tuple) -> PurchaseView:
+            return PurchaseView(purchase[3], purchase[1], purchase[0], purchase[2])
+
+        return list(map(create_view, purchases))
 
 
-def calculate(purchases: Collection[Purchase], region_name: str, by: CalculateBy = CalculateBy.count) -> Dict:
+def calculate(purchases: Collection[PurchaseView], region_name: str, by: CalculateBy = CalculateBy.count) -> Dict:
     """
     Вычисление статистики
     :param purchases: коллекция закупок
@@ -116,8 +136,10 @@ def calculate(purchases: Collection[Purchase], region_name: str, by: CalculateBy
         if region_name == ALL_REGIONS:
             regions_cnt = {}
             for purchase in purchases:
-                region = purchase.region.name
-                value = purchase.price if by == CalculateBy.sum else 1
+                with orm.db_session:
+                    region = purchase.region
+                with orm.db_session:
+                    value = purchase.price if by == CalculateBy.sum else 1
                 if region in regions_cnt:
                     regions_cnt[region] += value
                 else:
@@ -126,8 +148,10 @@ def calculate(purchases: Collection[Purchase], region_name: str, by: CalculateBy
         else:
             months_cnt = {}
             for purchase in purchases:
-                month = purchase.date.strftime("%Y.%m")
-                value = purchase.price if by == CalculateBy.sum else 1
+                with orm.db_session:
+                    month = purchase.date.strftime("%Y.%m")
+                with orm.db_session:
+                    value = purchase.price if by == CalculateBy.sum else 1
                 if month in months_cnt:
                     months_cnt[month] += value
                 else:
@@ -182,9 +206,9 @@ class MyWindow(QtWidgets.QMainWindow):
         po_class_name: str = self.comboBox_5.currentText()
         period: str = self.comboBox.currentText()
         by: CalculateBy = CalculateBy.sum if self.comboBox_4.currentText() == "По стоимости" else CalculateBy.count
-        purchases: List[Purchase] = get_purchases(region_name, po_class_name, period)
+        purchases: List[PurchaseView] = get_purchases(region_name, po_class_name, period)
         d = calculate(purchases, region_name, by)
-        percent = get_rus_po_perc(purchases=purchases)
+        percent = get_rus_po_perc(purchases)
         print(d, percent)
         self.lineEdit.setText(str(percent)[:6])
         param = "Стоимость" if self.comboBox_4.currentText() == "По стоимости" else "Количество"
