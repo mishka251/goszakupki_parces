@@ -1,10 +1,24 @@
 import ftplib
 import io
 import zipfile
-import os
 
-from database import Region, orm
-from xml_parcer import save_file_to_db
+from database import orm, PoClass, Region
+from xml_parcer import save_file_to_db, get_okpd2_from_xml
+from typing import List, Optional, Collection
+from xml.dom import minidom
+
+
+class FileInfo(object):
+    name: str
+    binary: bytes
+
+    def __init__(self, name: str, binary: bytes):
+        self.name = name
+        self.binary = binary
+
+    def __str__(self):
+        return self.name
+
 
 class PurchaseLoader:
     """
@@ -16,8 +30,28 @@ class PurchaseLoader:
         self.ftp = ftplib.FTP('ftp.zakupki.gov.ru')
         self.ftp.login('free', 'free')
 
+    def get_xml_files(self, file: FileInfo) -> List[FileInfo]:
+        excluded_types: List[str] = ['.sig']
 
-    def get_region(self, region_name: str):
+        xml_files: List[FileInfo] = []
+
+        if file.name.endswith('.xml'):
+            xml_files.append(file)
+        elif file.name.endswith(".zip"):
+            zip_file = zipfile.ZipFile(io.BytesIO(file.binary))
+
+            for filename in zip_file.namelist():
+                file = zip_file.read(filename)
+                xml_files.extend(self.get_xml_files(FileInfo(filename, file)))
+        elif any(file.name.endswith(exclude) for exclude in excluded_types):
+            return []
+        else:
+            print(f"Unknown file type {file.name}")
+            return []
+
+        return xml_files
+
+    def get_region(self, region_name: str) -> None:
         """
         Получение данных о закупках в регионе
         :param region_name: название региона
@@ -27,38 +61,25 @@ class PurchaseLoader:
 
         line_chunks = self.get_specific_line_chunks(self.is_necessary)
 
-        current = 1
         length = len(line_chunks)
 
-        for chunks in line_chunks:
+        for index, chunks in enumerate(line_chunks):
             file = self.get_file(chunks)
-            xml_files = []
-            if file['name'].endswith('.xml'):
-
-                xml_files.append(file)
-            if not file['name'].endswith(".zip"):
-                continue
-
-            zip_file = zipfile.ZipFile(io.BytesIO(file['binary']))
-
-            for xml_filename in zip_file.namelist():
-                if not xml_filename.endswith(".xml"):
+            xml_files = self.get_xml_files(file)
+            for file in xml_files:
+                content: str = file.binary.decode('utf-8')
+                tree = minidom.parseString(content)
+                code: Optional[str] = get_okpd2_from_xml(tree)
+                if code is None:
                     continue
-                xml_binary = zip_file.read(xml_filename)
-                xml_files.append({
-                    'name': xml_filename,
-                    'binary': xml_binary
-                })
 
-            yield {
-                'region_name': region_name,
-                'current': current,
-                'length': length,
-                'filename': file['name'],
-                'xml_files': xml_files
-            }
+                with orm.db_session:
+                    is_po = PoClass.get(code=code) is not None
+                if not is_po:
+                    continue
+                save_file_to_db(tree, region_name)
 
-            current += 1
+            print(f"{region_name} - {int(((index + 1) / length) * 100)}% loaded")
 
     def get_lines(self):
         lines = []
@@ -76,16 +97,12 @@ class PurchaseLoader:
     def get_line_chunks(self):
         return [self.get_chunks(line) for line in self.get_lines()]
 
-    def get_file(self, line_chunks):
+    def get_file(self, line_chunks) -> FileInfo:
         name = line_chunks['name']
 
         binary_chunks = []
         self.ftp.retrbinary(f'RETR {name}', binary_chunks.append)
-        return {
-            'date': line_chunks['date'],
-            'name': name,
-            'binary': b''.join(binary_chunks)
-        }
+        return FileInfo(name, b''.join(binary_chunks))
 
     def get_specific_line_chunks(self, condition):
         return [line_chunks for line_chunks in self.get_line_chunks() if condition(line_chunks)]
@@ -100,35 +117,12 @@ class PurchaseLoader:
         return self.is_file(line_chunks) and self.is_zip(line_chunks)
 
 
-def get_region(loader: PurchaseLoader, region_name: str):
-    """
-    Загрузка региона
-    из старого кода
-    :param loader: лоадер
-    :param region_name: назваине региона
-    :return:
-    """
-    if not os.path.isdir(f'downloads/{region_name}'):
-        os.mkdir(f'downloads/{region_name}')
-
-    for file in loader.get_region(region_name):
-        if len(file['xml_files']) > 0:
-            # if not os.path.isdir(f"downloads/{region_name}/{file['filename']}"):
-            #     os.mkdir(f"downloads/{region_name}/{file['filename']}")
-            for xml_file in file['xml_files']:
-                f = open(f"tmp_file", 'wb')
-                f.write(xml_file['binary'])
-                f.close()
-                save_file_to_db(f"tmp_file", region_name)
-
-        print(f"{region_name} - {int((file['current'] / file['length']) * 100)}% loaded")
-
-
 def main():
     loader = PurchaseLoader()
     with orm.db_session:
-        for region in orm.select(r.name for r in Region):
-            get_region(loader, region)
+        regions: List[str] = list(orm.select(r.name for r in Region))
+    for region in regions:
+        loader.get_region(region)
 
 
 if __name__ == "__main__":
