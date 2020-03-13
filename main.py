@@ -1,3 +1,4 @@
+import operator
 from typing import List, Collection, Dict, Tuple
 import sys
 import datetime
@@ -88,7 +89,7 @@ def get_rus_po_perc(purchases: List[PurchaseView]) -> float:
     """
     rus_po_count = 0
     for purchase in purchases:
-        if purchase.is_russian:
+        if purchase.pos.is_russian:
             rus_po_count += 1
 
     rus_po_percent = 100 * rus_po_count / len(purchases)
@@ -189,13 +190,16 @@ class MyWindow(QtWidgets.QMainWindow):
             self.lay.removeWidget(self.plotWidget)
 
         fig, ax = plt.subplots()
-        keys = sorted(data.keys())
+        fig.subplots_adjust(0.2, 0.4, 0.9, 0.9)
+        keys = list(data.keys())
         values: List[float] = [data[k] for k in keys]
         x = [i for i in range(len(values))]
         ax.bar(x, values)
-        ax.set_title(title, fontdict={'fontsize': 10})
-        pos, x_tick_labels = plt.xticks(x, keys)
-        plt.setp(x_tick_labels, rotation=45, fontsize=8)
+        ax.set_title(title, fontdict={'fontsize': 8})
+        #pos, x_tick_labels = plt.xticks(x, keys)
+        #plt.setp(x_tick_labels, rotation=60, fontsize=8)
+        ax.set_xticks(x)
+        ax.set_xticklabels(keys, rotation=45, fontsize='small', ha='right')
         # plot
         self.plotWidget = FigureCanvas(fig)
 
@@ -208,7 +212,14 @@ class MyWindow(QtWidgets.QMainWindow):
         by: CalculateBy = CalculateBy.sum if self.comboBox_4.currentText() == "По стоимости" else CalculateBy.count
         purchases: List[PurchaseView] = get_purchases(region_name, po_class_name, period)
         d = calculate(purchases, region_name, by)
-        percent = get_rus_po_perc(purchases)
+
+        if region_name==ALL_REGIONS:
+            d = dict(sorted(d.items(), key=operator.itemgetter(1), reverse=True)[:10])
+
+
+        with orm.db_session:
+            percent = 0#get_rus_po_perc(orm.select(p for p in Purchase))
+
         print(d, percent)
         self.lineEdit.setText(str(percent)[:6])
         param = "Стоимость" if self.comboBox_4.currentText() == "По стоимости" else "Количество"
