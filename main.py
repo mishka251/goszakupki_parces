@@ -81,7 +81,7 @@ def log_uncaught_exceptions(ex_cls, ex, tb):
 sys.excepthook = log_uncaught_exceptions
 
 
-def get_rus_po_perc(purchases: List[PurchaseView]) -> float:
+def get_rus_po_perc(purchases: List[Purchase]) -> float:
     """
     % российского ПО в закупках
     :param purchases: коллекция(список или ещё что) закупок
@@ -218,7 +218,7 @@ class MyWindow(QtWidgets.QMainWindow):
 
 
         with orm.db_session:
-            percent = 0#get_rus_po_perc(orm.select(p for p in Purchase))
+            percent = get_rus_po_perc(orm.select(p for p in Purchase))
 
         print(d, percent)
         self.lineEdit.setText(str(percent)[:6])
