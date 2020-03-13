@@ -125,7 +125,8 @@ def get_purchases(region_name: str, po_class_name: str, period: str) -> List[Pur
         return list(map(create_view, purchases))
 
 
-def calculate(purchases: Collection[PurchaseView], region_name: str, by: CalculateBy = CalculateBy.count) -> Dict:
+def calculate(purchases: Collection[PurchaseView], region_name: str, by: CalculateBy = CalculateBy.count,
+              useHalfYear: bool = False) -> Dict:
     """
     Вычисление статистики
     :param purchases: коллекция закупок
@@ -150,14 +151,20 @@ def calculate(purchases: Collection[PurchaseView], region_name: str, by: Calcula
             months_cnt = {}
             for purchase in purchases:
                 with orm.db_session:
-                    month = purchase.date.strftime("%Y.%m")
+                    year = purchase.date.strftime("%Y")
+                    month = purchase.date.strftime("%m")
+                    key = f"{year}.{(int(month) - 1) // 6 + 1}" if useHalfYear else f"{year}.{month}"
                 with orm.db_session:
                     value = purchase.price if by == CalculateBy.sum else 1
-                if month in months_cnt:
-                    months_cnt[month] += value
+                if key in months_cnt:
+                    months_cnt[key] += value
                 else:
-                    months_cnt[month] = value
-            return months_cnt
+                    months_cnt[key] = value
+            keys = sorted(months_cnt.keys())
+            sorted_months_cnt = {}
+            for key in keys:
+                sorted_months_cnt[key] = months_cnt[key]
+            return sorted_months_cnt
 
 
 class MyWindow(QtWidgets.QMainWindow):
@@ -196,8 +203,8 @@ class MyWindow(QtWidgets.QMainWindow):
         x = [i for i in range(len(values))]
         ax.bar(x, values)
         ax.set_title(title, fontdict={'fontsize': 8})
-        #pos, x_tick_labels = plt.xticks(x, keys)
-        #plt.setp(x_tick_labels, rotation=60, fontsize=8)
+        # pos, x_tick_labels = plt.xticks(x, keys)
+        # plt.setp(x_tick_labels, rotation=60, fontsize=8)
         ax.set_xticks(x)
         ax.set_xticklabels(keys, rotation=45, fontsize='small', ha='right')
         # plot
@@ -209,18 +216,23 @@ class MyWindow(QtWidgets.QMainWindow):
         region_name: str = self.plainTextEdit.text()
         po_class_name: str = self.comboBox_5.currentText()
         period: str = self.comboBox.currentText()
+        deltatime = timeintervals[period]
+
         by: CalculateBy = CalculateBy.sum if self.comboBox_4.currentText() == "По стоимости" else CalculateBy.count
         purchases: List[PurchaseView] = get_purchases(region_name, po_class_name, period)
-        d = calculate(purchases, region_name, by)
 
-        if region_name==ALL_REGIONS:
+        now: datetime = datetime.datetime.now()
+        useHalfYear: bool = now - deltatime <= now - relativedelta(years=2)
+
+        d = calculate(purchases, region_name, by, useHalfYear)
+
+        if region_name == ALL_REGIONS:
             d = dict(sorted(d.items(), key=operator.itemgetter(1), reverse=True)[:10])
-
 
         with orm.db_session:
             percent = get_rus_po_perc(orm.select(p for p in Purchase))
 
-        print(d, percent)
+        # print(d, percent)
         self.lineEdit.setText(str(percent)[:6])
         param = "Стоимость" if self.comboBox_4.currentText() == "По стоимости" else "Количество"
         region = "всех регионах" if region_name == 'все' else region_name
