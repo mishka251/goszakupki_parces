@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>789</width>
+    <height>573</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <widget class="QWidget" name="verticalLayoutWidget">
+    <property name="geometry">
+     <rect>
+      <x>9</x>
+      <y>30</y>
+      <width>771</width>
+      <height>491</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <item>
+      <widget class="QTableWidget" name="tableWidget">
+       <property name="rowCount">
+        <number>4</number>
+       </property>
+       <attribute name="horizontalHeaderDefaultSectionSize">
+        <number>118</number>
+       </attribute>
+       <attribute name="horizontalHeaderMinimumSectionSize">
+        <number>20</number>
+       </attribute>
+       <attribute name="verticalHeaderDefaultSectionSize">
+        <number>20</number>
+       </attribute>
+       <attribute name="verticalHeaderMinimumSectionSize">
+        <number>20</number>
+       </attribute>
+       <row/>
+       <column>
+        <property name="text">
+         <string>Наименование</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Код ОКПД2</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Класс ПО</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Стоимость закупки</string>
+        </property>
+       </column>
+<!--       <column>-->
+<!--        <property name="text">-->
+<!--         <string>Организация</string>-->
+<!--        </property>-->
+<!--       </column>-->
+       <column>
+        <property name="text">
+         <string>Регион</string>
+        </property>
+       </column>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QWidget" name="verticalLayoutWidget_2">
+    <property name="geometry">
+     <rect>
+      <x>600</x>
+      <y>520</y>
+      <width>181</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout_2">
+     <item>
+      <widget class="QPushButton" name="pushButton">
+       <property name="text">
+        <string>Статистический отчет</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>789</width>
+     <height>21</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
