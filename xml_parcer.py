@@ -6,7 +6,7 @@ import datetime
 import urllib.parse as parse_url
 import urllib.request as url_request
 from bs4 import BeautifulSoup
-
+import ssl
 
 def get_okpd2_from_xml(tree) -> Optional[str]:
     opkd = tree.getElementsByTagName('OKPD')
@@ -74,8 +74,12 @@ def check_is_russian(po_name: str) -> bool:
         "set_filter": "Y"
     }
 
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
     url += parse_url.urlencode(data)
-    page = url_request.urlopen(url).read()
+    page = url_request.urlopen(url, context=ctx).read()
     soap = BeautifulSoup(page, features="lxml")
     results = soap.find('div', {'class': 'result_area'})
     return results is not None
@@ -141,35 +145,3 @@ def save_file_to_db(xml_tree, region: str):
                             price=code['price'],
                             pos=po,
                             object_name=code['object'])
-
-# def get_region_codes(region: str):
-#     """
-#     Обработка всех загруженных файлов для региона
-#     :param region:
-#     :return:
-#     """
-#     downloads_dir: str = 'downloads'
-#     region_dir: str = os.path.join(downloads_dir, region)
-#     if not os.path.exists(region_dir):
-#         print(f"Не найдена папка загрузок {region_dir} для региона {region}")
-#         return
-#
-#     total: int = len(os.listdir(region_dir))
-#
-#     for i, folder in enumerate(os.listdir(region_dir)):
-#
-#         folder_path: str = os.path.join(region_dir, folder)
-#
-#         if not os.path.isdir(folder_path):
-#             print(f"Warning, is not dir {folder_path}")
-#             continue
-#
-#         for file in os.listdir(folder_path):
-#             save_file_to_db(os.path.join(folder_path, file), region)
-#
-#         print(f"{region_name} - {int(100 * i / total)}% added to db")
-
-
-# with orm.db_session:
-#     for region_name in orm.select(r.name for r in Region):
-#         get_region_codes = []
