@@ -20,6 +20,14 @@ class FileInfo(object):
         return self.name
 
 
+def save_to_cache(cache_filename: str, region: str, chunk_index: int):
+    cache = open(cache_filename, 'w')
+    cache.write(region)
+    cache.write('\n')
+    cache.write(str(chunk_index))
+    cache.close()
+
+
 class PurchaseLoader:
     """
     Класс для загрузки xml с фтп
@@ -27,6 +35,9 @@ class PurchaseLoader:
     """
 
     def __init__(self):
+        self.open_ftp()
+
+    def open_ftp(self):
         self.ftp = ftplib.FTP('ftp.zakupki.gov.ru')
         self.ftp.login('free', 'free')
 
@@ -51,7 +62,7 @@ class PurchaseLoader:
 
         return xml_files
 
-    def get_region(self, region_name: str) -> None:
+    def get_region(self, region_name: str, cache_filename: str, last_chunk_index: Optional[int] = None) -> None:
         """
         Получение данных о закупках в регионе
         :param region_name: название региона
@@ -59,13 +70,28 @@ class PurchaseLoader:
         """
         self.ftp.cwd(f'/fcs_regions/{region_name}/notifications')
 
-        line_chunks = self.get_specific_line_chunks(self.is_necessary)
+        try:
+            line_chunks = self.get_specific_line_chunks(self.is_necessary)
+        except:
+            self.open_ftp()
+            line_chunks = self.get_specific_line_chunks(self.is_necessary)
 
         length = len(line_chunks)
+        if last_chunk_index is not None:
+            line_chunks = line_chunks[last_chunk_index:]
 
-        for index, chunks in enumerate(line_chunks):
-            file = self.get_file(chunks)
+        for _index, chunks in enumerate(line_chunks):
+            index = _index if last_chunk_index is None else _index+ last_chunk_index
+            try:
+                file = self.get_file(chunks)
+            except:
+                self.open_ftp()
+                file = self.get_file(chunks)
+
+            save_to_cache(cache_filename, region_name, index)
+
             xml_files = self.get_xml_files(file)
+
             for file in xml_files:
                 content: str = file.binary.decode('utf-8')
                 tree = minidom.parseString(content)
@@ -104,7 +130,7 @@ class PurchaseLoader:
         self.ftp.retrbinary(f'RETR {name}', binary_chunks.append)
         return FileInfo(name, b''.join(binary_chunks))
 
-    def get_specific_line_chunks(self, condition):
+    def get_specific_line_chunks(self, condition) -> List:
         return [line_chunks for line_chunks in self.get_line_chunks() if condition(line_chunks)]
 
     def is_file(self, line_chunks):
@@ -118,11 +144,25 @@ class PurchaseLoader:
 
 
 def main():
+    cache_filename = 'cache.txt'
+    last_region: Optional[str] = None
+    last_file: Optional[int] = None
+    try:
+        cache_read = open(cache_filename, 'r')
+        last_region = cache_read.readline().strip()
+        last_file = int(cache_read.readline())
+        cache_read.close()
+    except:
+        pass
     loader = PurchaseLoader()
     with orm.db_session:
         regions: List[str] = list(orm.select(r.name for r in Region))
+    if last_region is not None:
+        loader.get_region(last_region, cache_filename, last_file)
+        regions = list(filter(lambda region: region > last_region, regions))
     for region in regions:
-        loader.get_region(region)
+        save_to_cache(cache_filename, region, 0)
+        loader.get_region(region, cache_filename, last_file)
 
 
 if __name__ == "__main__":
