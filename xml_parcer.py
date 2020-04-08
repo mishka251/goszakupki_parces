@@ -8,6 +8,7 @@ import urllib.request as url_request
 from bs4 import BeautifulSoup
 import ssl
 
+
 def get_okpd2_from_xml(tree) -> Optional[str]:
     opkd = tree.getElementsByTagName('OKPD')
     opkd2 = tree.getElementsByTagName('OKPD2')
@@ -19,25 +20,28 @@ def get_okpd2_from_xml(tree) -> Optional[str]:
     return code.childNodes[0].data
 
 
-def get_name_from_xml_file(tree) -> str:
-    name = tree.getElementsByTagName('purchaseObjectInfo')[0]
-    return name.childNodes[0].data
+def get_property(tree, name: str) -> Optional[str]:
+    elements = tree.getElementsByTagName(name)
+    if not elements:
+        return None
+    element = elements[0]
+    return element.childNodes[0].data
 
 
-def get_date_from_xml_file(tree) -> str:
-    date = tree.getElementsByTagName('docPublishDate')[0]
-    return date.childNodes[0].data
+def get_name_from_xml_file(tree) -> Optional[str]:
+    return get_property(tree, 'purchaseObjectInfo')
 
 
-def get_price_from_xml_file(tree) -> str:
-    price = tree.getElementsByTagName('maxPrice')[0]
-    return price.childNodes[0].data
+def get_date_from_xml_file(tree) -> Optional[str]:
+    return get_property(tree, 'docPublishDate')
 
 
-def get_purchase_object(tree) -> str:
-    price = tree.getElementsByTagName('purchaseObjectInfo')[0]
-    purchase_object: str = price.childNodes[0].data
-    return purchase_object
+def get_price_from_xml_file(tree) -> Optional[str]:
+    return get_property(tree, 'maxPrice')
+
+
+def get_purchase_object(tree) -> Optional[str]:
+    return get_property(tree, 'purchaseObjectInfo')
 
 
 def get_po_name(purchase_object: str) -> str:
@@ -132,6 +136,9 @@ def save_file_to_db(xml_tree, region: str):
             print("NO NAME", code['object'])
             return
 
+        if (not code['name']) or (not code['date'])or (not code['price'])or (not code['object']):
+            print("WARNING чего-то не хватает")
+            return
 
         db_region = Region.get(name=region) or Region(name=region)
 
