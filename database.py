@@ -30,6 +30,7 @@ class Purchase(database.Entity):
     pos = orm.Required("PO")
     region = orm.Required(Region)
     object_name = orm.Required(str)
+    is_finished = orm.Optional(bool)
 
 
 class Classifier(database.Entity):
