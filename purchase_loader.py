@@ -28,6 +28,19 @@ def save_to_cache(cache_filename: str, region: str, chunk_index: int):
     cache.close()
 
 
+def retry(retry_count=5, default=None):
+    def retry_decorator(function):
+        def inner(*args, **kwargs):
+            for i in range(retry_count):
+                try:
+                    return function(*args, **kwargs)
+                except Exception as ex:
+                    print(f'Попытка {i+1} из {retry_count} закончилась с ошибкой')
+            return default
+        return inner
+    return retry_decorator
+
+
 class PurchaseLoader:
     """
     Класс для загрузки xml с фтп
@@ -37,10 +50,12 @@ class PurchaseLoader:
     def __init__(self):
         self.open_ftp()
 
+    @retry()
     def open_ftp(self):
         self.ftp = ftplib.FTP('ftp.zakupki.gov.ru')
         self.ftp.login('free', 'free')
 
+    @retry(default=[])
     def get_xml_files(self, file: FileInfo) -> List[FileInfo]:
         excluded_types: List[str] = ['.sig']
 
@@ -62,6 +77,20 @@ class PurchaseLoader:
 
         return xml_files
 
+    @retry()
+    def _save_xml_file(self, file: FileInfo, region_name: str) -> None:
+        content: str = file.binary.decode('utf-8')
+        tree = minidom.parseString(content)
+        code: Optional[str] = get_okpd2_from_xml(tree)
+        if code is None:
+            return
+
+        with orm.db_session:
+            is_po = PoClass.get(code=code) is not None
+        if not is_po:
+            return
+        save_file_to_db(tree, region_name)
+
     def get_region(self, region_name: str, cache_filename: str, last_chunk_index: Optional[int] = None) -> None:
         """
         Получение данных о закупках в регионе
@@ -82,28 +111,15 @@ class PurchaseLoader:
 
         for _index, chunks in enumerate(line_chunks):
             index = _index if last_chunk_index is None else _index+ last_chunk_index
-            try:
-                file = self.get_file(chunks)
-            except:
-                self.open_ftp()
-                file = self.get_file(chunks)
-
+            file = self.get_file(chunks)
+            if file is None:
+                continue
             save_to_cache(cache_filename, region_name, index)
 
             xml_files = self.get_xml_files(file)
 
             for file in xml_files:
-                content: str = file.binary.decode('utf-8')
-                tree = minidom.parseString(content)
-                code: Optional[str] = get_okpd2_from_xml(tree)
-                if code is None:
-                    continue
-
-                with orm.db_session:
-                    is_po = PoClass.get(code=code) is not None
-                if not is_po:
-                    continue
-                save_file_to_db(tree, region_name)
+                self._save_xml_file(file, region_name)
 
             print(f"{region_name} - {int(((index + 1) / length) * 100)}% loaded")
 
@@ -123,11 +139,16 @@ class PurchaseLoader:
     def get_line_chunks(self):
         return [self.get_chunks(line) for line in self.get_lines()]
 
+    @retry()
     def get_file(self, line_chunks) -> FileInfo:
         name = line_chunks['name']
 
         binary_chunks = []
-        self.ftp.retrbinary(f'RETR {name}', binary_chunks.append)
+        try:
+            self.ftp.retrbinary(f'RETR {name}', binary_chunks.append)
+        except Exception:
+            self.open_ftp()
+            self.ftp.retrbinary(f'RETR {name}', binary_chunks.append)
         return FileInfo(name, b''.join(binary_chunks))
 
     def get_specific_line_chunks(self, condition) -> List:
