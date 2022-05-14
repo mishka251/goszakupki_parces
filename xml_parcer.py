@@ -71,7 +71,7 @@ def check_is_russian(po_name: str) -> bool:
     :param po_name: название по
     :return:
     """
-    url = "https://reestr.minsvyaz.ru/reestr/?"
+    url = "https://reestr.digital.gov.ru/reestr/?"
     data = {
         "name": po_name,
         "show_count": 100,
